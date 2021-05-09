@@ -1,6 +1,4 @@
 import socket   
-from utils import decode64
-from utils import encode64
 
 help_string = """ \
 ================= COMMANDS =====================
@@ -26,11 +24,11 @@ def pta_session(host, port):
     return s
 
 def handle_response(data, cmd):
-    response = str(data).split(' ')
-    
+    data = data.split(b' ', 3)
+    response = data[1].decode()
     cmd = cmd.split(' ')
 
-    if data[1] == 'NOK': 
+    if str(response[1]) == 'NOK': 
         if commands[cmd[0]] == 'CUMP':
             print('Wrong user.')
 
@@ -42,20 +40,18 @@ def handle_response(data, cmd):
 
         return -1
 
-    if commands[cmd[0]] == 'TERM' and response[1] == 'OK':
+    if commands[cmd[0]] == 'TERM' and response == 'OK':
         return 0
 
-    elif commands[cmd[0]] == 'PEGA' and response[1] == 'ARQ':
+    elif commands[cmd[0]] == 'PEGA' and response == 'ARQ':
         fd = open('{}'.format(cmd[1]), 'wb')
-        delimiter = str(data).find('<')
-        raw_data = data[delimiter-1:]    
+        raw_data = data[3]
         fd.write(raw_data)
         fd.close()
         
-
-    elif commands[cmd[0]] == 'LIST' and response[1] == 'ARQS':
-        for filename in response[3].split(','):
-            print(filename)
+    elif commands[cmd[0]] == 'LIST' and response == 'ARQS':
+        for filename in data[3].split(b','):
+            print(filename.decode())
 
     return 1
 
@@ -67,16 +63,18 @@ def send_packet(s, cmd):
     cmd_packet += str(seq_num)
     cmd_packet += ' ' + commands[cmd[0]]
 
-    if len(cmd) >= 2: cmd_packet += ' ' + cmd[1]
+    if len(cmd) >= 2: 
+        cmd_packet += ' ' + cmd[1]
+
     bytes_encoded = cmd_packet.encode()
     s.send(bytes_encoded)
     seq_num += 1
 
-    data = s.recv(65500000)
+    bytes_decoded = ''
     
-    bytes_decoded = decode64(data)
-    
-    return bytes_decoded
+    data = s.recv(655355000)
+    print(data)
+    return data
 
 def main(port=11550):
     s = pta_session('127.0.0.1', port)
