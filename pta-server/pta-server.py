@@ -56,7 +56,6 @@ class PTAServer:
             raw_file = open('./{}/{}'.format(
                             self.files_directory, filename), 
                             'rb').read().close()
-
             payload = '{} {} '.format(self.responses[2], 
                                         len(raw_file))
             payload = payload.encode() + raw_file
@@ -100,7 +99,8 @@ class PTAServer:
         return data, data[1]
 
     def listen(self):
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server = socket.socket(socket.AF_INET, 
+                                    socket.SOCK_STREAM)
         self.server.bind((self.host, self.port))
         self.server.listen()
 
@@ -114,7 +114,8 @@ class PTAServer:
                 data, command = self.splitted_data(data)
                 self.seq_num = int(data[0])
 
-                if command == 'PEGA' or command == 'CUMP' and len(data) > 2:
+                if command == 'PEGA' or 
+                    command == 'CUMP' and len(data) > 2:
                     status = self.operations[command](conn, data[2])
                     if not status: break
 
