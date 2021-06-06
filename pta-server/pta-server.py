@@ -114,8 +114,7 @@ class PTAServer:
                 data, command = self.splitted_data(data)
                 self.seq_num = int(data[0])
 
-                if command == 'PEGA' or 
-                    command == 'CUMP' and len(data) > 2:
+                if command == 'PEGA' or command == 'CUMP' and len(data) > 2:
                     status = self.operations[command](conn, data[2])
                     if not status: break
 
