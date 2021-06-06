@@ -1,12 +1,12 @@
 import os
 import socket
-import sys
-sys.path.append('..')
-
-
 
 class PTAServer:
-    def __init__(self, host='127.0.0.1', port=11550, files='files'):
+    def __init__(self, 
+                host='127.0.0.1', 
+                port=11550, 
+                files='files'):
+
         self.host = host
         self.port = port
         self.connections_opened = []
@@ -15,60 +15,55 @@ class PTAServer:
         self.users = []
 
         self.responses = ['OK', 'NOK', 'ARQ', 'ARQS']
-
         self.operations = {
             'PEGA': self.send_file,
-            'LIST': self.send_listof_files,
+            'LIST': self.send_list_of_files,
             'CUMP': self.open_connection,
             'TERM': self.close_connection
         }
 
-        self.get_users()
+        self.set_users()
     
-    def get_users(self):
-        with open('users.txt', 'r') as f:
-            for user in f.readlines():
-                self.users.append(user.rstrip('\n'))
+    def set_users(self):
+        users = open('users.txt', 'r')
+        self.users = [user.rstrip('\n') 
+        for user in users.readlines()]
 
     def send_packet(self, conn, payload):
         payload = '{} {}'.format(str(self.seq_num), payload)
         payload = payload.encode()
         conn.sendall(payload)
 
-    def send_listof_files(self, conn):
+    def send_list_of_files(self, conn):
         if not self.is_connected(conn):
             self.bad_action(conn)
-            return 1
+            return
 
-        filenames = []
-
-        for _, _, files in os.walk('./{}'.format(self.files_directory)):
-            for filename in files: filenames += [filename]
-        
-        size = len(filenames)
-        filenames = ','.join(filenames)
-
-        payload = '{} {} {},'.format(self.responses[3], str(size), filenames)
-        
+        filenames = ','.join(os.listdir('./{}'.format(
+                                self.files_directory)))
+        payload = '{} {} {},'.format(self.responses[3], 
+                                    str(len(filenames)), 
+                                    filenames)
+                                
         self.send_packet(conn, payload)
-
-        return 1
         
     def send_file(self, conn, filename):
-        if not self.is_connected(conn): self.bad_action(conn)
+        if not self.is_connected(conn): 
+            self.bad_action(conn)
+            return
 
         try:
-            fd = open('./{}/{}'.format(self.files_directory, filename), 'rb')
-            raw_file = fd.read()
-            length = len(raw_file)
-            payload = '{} {} {} '.format(self.seq_num, self.responses[2], length)
+            raw_file = open('./{}/{}'.format(
+                            self.files_directory, filename), 
+                            'rb').read().close()
+
+            payload = '{} {} '.format(self.responses[2], 
+                                        len(raw_file))
             payload = payload.encode() + raw_file
-            conn.sendall(payload)
-            fd.close()
+            self.send_packet(conn, payload)
 
-        except Exception: self.bad_action(conn)
-
-        return 1
+        except Exception: 
+            self.bad_action(conn)
 
     def open_connection(self, conn, user):
         if user in self.users:
@@ -88,8 +83,7 @@ class PTAServer:
         if self.is_connected(conn):
             idx = self.connections_opened.index(conn)
             del self.connections_opened[idx]
-        conn.close()
-        return 1
+            conn.close()
 
     def is_connected(self, conn):
         return conn in self.connections_opened
@@ -112,16 +106,12 @@ class PTAServer:
 
         while True:
             conn, addr = self.server.accept()
-            
             self.seq_num = None
 
             while True:
                 data = conn.recv(1024)
-
                 if not data: break
-
                 data, command = self.splitted_data(data)
-
                 self.seq_num = int(data[0])
 
                 if command == 'PEGA' or command == 'CUMP' and len(data) > 2:
